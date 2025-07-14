@@ -33,6 +33,26 @@ def many_to_one(params):
 def task_collect(configs):
     succ_path_lst = glob(os.path.join(configs.succ_dir, "**/*.npy"), recursive=True)
     succ_folder_lst = list(set([os.path.dirname(p) for p in succ_path_lst]))
+
+    # check dimension validity
+    qpos_dim = None
+    if configs.hand_name == "shadow":
+        qpos_dim = 7 + 22
+
+    if qpos_dim is not None:
+        invalid_path_idx = []
+        for i, path in enumerate(succ_path_lst):
+            data = np.load(path, allow_pickle=True).item()
+            if data['grasp_qpos'].shape[0] != qpos_dim or \
+                data['pregrasp_qpos'].shape[0] != qpos_dim or \
+                    data['squeeze_qpos'].shape[0] != qpos_dim:
+                invalid_path_idx.append(i)
+
+        invalid_path_lst = [succ_path_lst[i] for i in invalid_path_idx]
+        invalid_folder_lst = list(set([os.path.dirname(p) for p in invalid_path_lst]))
+
+        succ_folder_lst = list(set(succ_folder_lst) - set(invalid_folder_lst))
+
     logging.info(
         f"Get {len(succ_path_lst)} success data and {len(succ_folder_lst)} folder."
     )

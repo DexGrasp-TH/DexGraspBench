@@ -1,0 +1,14 @@
+xml_path: assets/hand/lz_gripper/lz_gripper_floating_wrist.xml 
+mocap: True
+exclude_table_contact: 
+color: [0.898039, 0.921569, 0.929412, 1.0]
+finger_prefix: ['thumb', 'index', 'middle', 'ring', 'little']
+valid_body_name: [
+    'base_link', 
+    'thumb_link1', 'thumb_link2', 'thumb_link3', 'thumb_tip',
+    'index_link1', 'index_link2', 'index_tip',
+    'middle_link1', 'middle_link2', 'middle_tip',
+    'ring_link1', 'ring_link2', 'ring_tip',
+    'little_link1', 'little_link2', 'little_tip',
+]
+tip_body_name: ['thumb_tip','index_tip','middle_tip','ring_tip','little_tip']

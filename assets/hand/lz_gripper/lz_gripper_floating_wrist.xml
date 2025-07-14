@@ -1,0 +1,106 @@
+<mujoco model="lz_gripper">
+  <compiler angle="radian" />
+  <option gravity="0 0 0" />
+
+  <default>
+    <!-- copy from
+        https://github.com/google-deepmind/mujoco_menagerie/blob/main/shadow_hand/right_hand.xml -->
+
+    <position forcerange="-1 1" kp="1.0" />
+
+    <!-- Wrist joints and actuators -->
+    <default class="palm_slide">
+      <joint limited="true" range="-1.0 1.0" actuatorfrcrange="-100000000 100000000" type="slide"
+        damping="100" armature="0.01" />
+      <position kp="5000" forcerange="-100000000 100000000" />
+    </default>
+    <default class="palm_hinge">
+      <joint limited="true" range="-3.1416 3.1416" actuatorfrcrange="-100000000 100000000"
+        type="hinge" damping="10" armature="0.01" />
+      <position kp="100" forcerange="-100000000 100000000" />
+    </default>
+
+    <!-- Hand joints and actuators -->
+    <default class="hand_joint">
+      <joint axis="1 0 0" damping="0.05" armature="0.0002" frictionloss="0.01" />
+      <position ctrlrange="0 1.57" />
+    </default>
+
+    <default class="thumb_joint2">
+      <position ctrlrange="0 0.35" />
+    </default>
+
+    <default class="tendon_joint" >
+      <position kp="1.0" ctrlrange="0 1.57" />
+    </default>
+
+    <!-- Hand geometries -->
+    <default class="plastic">
+      <geom solimp="0.5 0.99 0.0001" solref="0.005 1" />
+      <default class="plastic_visual">
+        <geom type="mesh" material="black" contype="0" conaffinity="0" group="2" />
+      </default>
+      <default class="plastic_collision">
+        <geom group="3" />
+      </default>
+    </default>
+
+  </default>
+
+  <asset>
+    <material name="black" specular="0.5" shininess="0.25" rgba="0.16355 0.16355 0.16355 1" />
+  </asset>
+
+  <!-- include the description of the hand body -->
+  <include file="./lz_gripper_raw.xml" />
+  <include file="./scene.xml" />
+
+  <contact>
+    <exclude body1="base_link" body2="thumb_link2" />
+  </contact>
+
+  <tendon>
+    <fixed name="thumb_tendon">
+      <joint joint="thumb_joint2" coef="-4.4857" />
+      <joint joint="thumb_joint3" coef="1" />
+    </fixed>
+
+    <fixed name="index_tendon">
+      <joint joint="index_joint1" coef="1" />
+      <joint joint="index_joint2" coef="-1" />
+    </fixed>
+
+    <fixed name="middle_tendon">
+      <joint joint="middle_joint1" coef="1" />
+      <joint joint="middle_joint2" coef="-1" />
+    </fixed>
+
+    <fixed name="ring_tendon">
+      <joint joint="ring_joint1" coef="1" />
+      <joint joint="ring_joint2" coef="-1" />
+    </fixed>
+
+    <fixed name="little_tendon">
+      <joint joint="little_joint1" coef="1" />
+      <joint joint="little_joint2" coef="-1" />
+    </fixed>
+  </tendon>
+
+  <equality>
+    <tendon tendon1="thumb_tendon" tendon2="" polycoef="0 1 0"/>
+    <tendon tendon1="index_tendon" tendon2="" polycoef="0 1 0"/>
+    <tendon tendon1="middle_tendon" tendon2="" polycoef="0 1 0"/>
+    <tendon tendon1="ring_tendon" tendon2="" polycoef="0 1 0"/>
+    <tendon tendon1="little_tendon" tendon2="" polycoef="0 1 0"/>
+  </equality>
+
+  <actuator>
+    <position name="thumb_actuator" joint="thumb_joint1" class="hand_joint" />
+    <position name="thumb_actuator2" joint="thumb_joint3" class="hand_joint" />
+    <position name="index_actuator" joint="index_joint1" class="hand_joint" />
+    <position name="middle_actuator" joint="middle_joint1" class="hand_joint" />
+    <position name="ring_actuator" joint="ring_joint1" class="hand_joint" />
+    <position name="little_actuator" joint="little_joint1" class="hand_joint" />
+  </actuator>
+
+</mujoco>
