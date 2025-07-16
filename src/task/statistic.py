@@ -160,6 +160,11 @@ def get_diversity(data_lst):
         np.stack([d["obj_pose"] for d in data_lst], axis=0)
     ).float()
 
+    valid_mask = ~torch.isnan(hand_poses).any(axis=-1)
+    hand_poses = hand_poses[valid_mask]
+    hand_qpos = hand_qpos[valid_mask]
+    obj_poses = obj_poses[valid_mask]
+
     obj_rot = torch_quaternion_to_matrix(obj_poses[:, 3:])
     hand_rot = torch_quaternion_to_matrix(hand_poses[:, 3:])
     hand_real_trans = (
