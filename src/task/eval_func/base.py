@@ -3,6 +3,7 @@ import sys
 from copy import deepcopy
 import logging
 
+import pickle
 import numpy as np
 import imageio
 
@@ -22,6 +23,10 @@ class BaseEval:
         self.configs = configs
         self.grasp_data = np.load(input_npy_path, allow_pickle=True).item()
 
+        # Use already existing MuJoCo evaluation result
+        self.use_existing_eval = True if configs.task.valid_result_dir is not None else False
+        self.skip_metrics = self.use_existing_eval
+
         # Fix object mass by setting density
         obj_info = load_json(
             os.path.join(self.grasp_data["obj_path"], "info/simplified.json")
@@ -32,22 +37,26 @@ class BaseEval:
         )
 
         # Build mj_spec
-        self.mj_ho = MjHO(
-            obj_path=self.grasp_data["obj_path"],
-            obj_scale=self.grasp_data["obj_scale"],
-            has_floor_z0=configs.setting == "tabletop",
-            obj_density=new_obj_density,
-            hand_xml_path=configs.hand.xml_path,
-            hand_mocap=configs.hand.mocap,
-            exclude_table_contact=configs.hand.exclude_table_contact,
-            friction_coef=configs.task.miu_coef,
-            debug_render=configs.task.debug_render,
-            debug_viewer=configs.task.debug_viewer,
-        )
+        if self.use_existing_eval:
+            self.mj_ho = None
+        else:
+            self.mj_ho = MjHO(
+                obj_path=self.grasp_data["obj_path"],
+                obj_scale=self.grasp_data["obj_scale"],
+                has_floor_z0=configs.setting == "tabletop",
+                obj_density=new_obj_density,
+                hand_xml_path=configs.hand.xml_path,
+                hand_mocap=configs.hand.mocap,
+                exclude_table_contact=configs.hand.exclude_table_contact,
+                friction_coef=configs.task.miu_coef,
+                debug_render=configs.task.debug_render,
+                debug_viewer=configs.task.debug_viewer,
+            )
 
         if self.configs.task.debug_viewer or self.configs.task.debug_render:
-            with open("debug.xml", "w") as f:
-                f.write(self.mj_ho.spec.to_xml())
+            if self.mj_ho is not None:
+                with open("debug.xml", "w") as f:
+                    f.write(self.mj_ho.spec.to_xml())
 
         return
 
@@ -101,52 +110,69 @@ class BaseEval:
     def _eval_simulate_under_extforce(self):
         eval_config = self.configs.task.simulation_metrics
 
-        # Reset to init hand qpos and check contact
-        init_qpos = (
-            self.grasp_data["pregrasp_qpos"]
-            if self.configs.hand.mocap
-            else self.grasp_data["approach_qpos"][0]
-        )
-        ho_contact, hh_contact = self.mj_ho.get_contact_info(
-            init_qpos, self.grasp_data["obj_pose"]
-        )
+        if self.use_existing_eval:
+            object_code = self.grasp_data["obj_path"].split("/")[-1]
+            scale_pose_code = self.input_npy_path.split("/")[-2].replace(".npy", "")
+            grasp_idx = int(self.input_npy_path.split("/")[-1].replace("_grasp.npy", ""))
+            valid_result = pickle.load(
+                open(os.path.join(self.configs.task.valid_result_dir, f"{object_code}.pkl"), "rb"))
+            
+            sp_code_lst = [path.split("/")[-1].replace("_grasp.npy", "") for path in valid_result['grasp_path_lst']]
+            sp_idx = sp_code_lst.index(scale_pose_code)
 
-        # Filter out bad initialization with severe penetration
-        ho_dist = (
-            min([c["contact_dist"] for c in ho_contact]) if len(ho_contact) > 0 else 0
-        )
-        hh_dist = (
-            min([c["contact_dist"] for c in hh_contact]) if len(hh_contact) > 0 else 0
-        )
-        if ho_dist < -eval_config.max_pene or hh_dist < -eval_config.max_pene:
+            delta_pos = valid_result['rollout_result']['pos'][np.array(valid_result['grasp_path_idx']) == sp_idx][grasp_idx]
+            delta_angle = np.rad2deg(valid_result['rollout_result']['quat'][np.array(valid_result['grasp_path_idx']) == sp_idx][grasp_idx])
+
+            succ_flag = (delta_pos < eval_config.trans_thre) & (
+                delta_angle < eval_config.angle_thre
+            )
+        else:
+            # Reset to init hand qpos and check contact
+            init_qpos = (
+                self.grasp_data["pregrasp_qpos"]
+                if self.configs.hand.mocap
+                else self.grasp_data["approach_qpos"][0]
+            )
+            ho_contact, hh_contact = self.mj_ho.get_contact_info(
+                init_qpos, self.grasp_data["obj_pose"]
+            )
+
+            # Filter out bad initialization with severe penetration
+            ho_dist = (
+                min([c["contact_dist"] for c in ho_contact]) if len(ho_contact) > 0 else 0
+            )
+            hh_dist = (
+                min([c["contact_dist"] for c in hh_contact]) if len(hh_contact) > 0 else 0
+            )
+            if ho_dist < -eval_config.max_pene or hh_dist < -eval_config.max_pene:
+                if self.configs.task.debug_viewer or self.configs.task.debug_render:
+                    print(f"Severe penetration larger than {eval_config.max_pene}")
+                return False, 100, 100
+
+            # Record initial object pose
+            pre_obj_qpos = deepcopy(self.mj_ho.get_obj_pose())
+            if self.configs.setting == "tabletop":
+                pre_obj_qpos[2] += 0.1
+
+            # Detailed simulation methods for testing
+            self._simulate_under_extforce_details(pre_obj_qpos)
+
+            # Compare the resulted object pose
+            latter_obj_qpos = self.mj_ho.get_obj_pose()
+            delta_pos, delta_angle = np_get_delta_qpos(pre_obj_qpos, latter_obj_qpos)
+            succ_flag = (delta_pos < eval_config.trans_thre) & (
+                delta_angle < eval_config.angle_thre
+            )
+
             if self.configs.task.debug_viewer or self.configs.task.debug_render:
-                print(f"Severe penetration larger than {eval_config.max_pene}")
-            return False, 100, 100
-
-        # Record initial object pose
-        pre_obj_qpos = deepcopy(self.mj_ho.get_obj_pose())
-        if self.configs.setting == "tabletop":
-            pre_obj_qpos[2] += 0.1
-
-        # Detailed simulation methods for testing
-        self._simulate_under_extforce_details(pre_obj_qpos)
-
-        # Compare the resulted object pose
-        latter_obj_qpos = self.mj_ho.get_obj_pose()
-        delta_pos, delta_angle = np_get_delta_qpos(pre_obj_qpos, latter_obj_qpos)
-        succ_flag = (delta_pos < eval_config.trans_thre) & (
-            delta_angle < eval_config.angle_thre
-        )
-
-        if self.configs.task.debug_viewer or self.configs.task.debug_render:
-            print(succ_flag, delta_pos, delta_angle)
-            if self.configs.task.debug_render:
-                debug_path = self.input_npy_path.replace(
-                    self.configs.grasp_dir, self.configs.task.debug_dir
-                ).replace(".npy", ".gif")
-                os.makedirs(os.path.dirname(debug_path), exist_ok=True)
-                imageio.mimsave(debug_path, self.mj_ho.debug_images)
-                print("Save GIF to ", debug_path)
+                print(succ_flag, delta_pos, delta_angle)
+                if self.configs.task.debug_render:
+                    debug_path = self.input_npy_path.replace(
+                        self.configs.grasp_dir, self.configs.task.debug_dir
+                    ).replace(".npy", ".gif")
+                    os.makedirs(os.path.dirname(debug_path), exist_ok=True)
+                    imageio.mimsave(debug_path, self.mj_ho.debug_images)
+                    print("Save GIF to ", debug_path)
 
         return succ_flag, delta_pos, delta_angle
 
@@ -212,7 +238,7 @@ class BaseEval:
 
     def run(self):
         eval_results = {}
-        if self.configs.task.pene_contact_metrics is not None:
+        if self.configs.task.pene_contact_metrics is not None and not self.skip_metrics:
             (
                 eval_results["ho_pene"],
                 eval_results["self_pene"],
@@ -221,7 +247,7 @@ class BaseEval:
                 eval_results["contact_consis"],
             ) = self._eval_pene_and_contact()
 
-        if self.configs.task.analytic_fc_metrics is not None:
+        if self.configs.task.analytic_fc_metrics is not None and not self.skip_metrics:
             fc_metric_results = self._eval_analytic_fc_metric()
             for k, v in fc_metric_results.items():
                 eval_results[k] = v
