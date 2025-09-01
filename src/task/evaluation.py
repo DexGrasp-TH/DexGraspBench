@@ -11,6 +11,7 @@ from .eval_func import *
 
 def safe_eval_one(params):
     input_npy_path, configs = params[0], params[1]
+    # tabletopMocapEval(input_npy_path, configs).run()
     try:
         if configs.hand.mocap:
             eval_func_name = f"{configs.setting}MocapEval"
@@ -69,3 +70,13 @@ def task_eval(configs):
     logging.info(f"Finish evaluation")
 
     return
+
+
+if __name__ == "__main__":
+    import argparse
+    from omegaconf import OmegaConf
+
+    dic = {'skip': True, 'n_worker': 48, 'setting': 'tabletop', 'exp_name': 'debug', 'save_root': 'output', 'save_dir': 'output/debug_lz_gripper', 'grasp_dir': 'output/debug_lz_gripper/graspdata', 'eval_dir': 'output/debug_lz_gripper/evaluation', 'succ_dir': 'output/debug_lz_gripper/succgrasp', 'collect_dir': 'output/debug_lz_gripper/succ_collect', 'vusd_dir': 'output/debug_lz_gripper/vis_usd', 'vobj_dir': 'output/debug_lz_gripper/vis_obj', 'log_dir': 'output/debug_lz_gripper/log/eval/2025_07_15_06_22_31', 'task_name': 'eval', 'hand_name': 'lz_gripper', 'task': {'max_num': 1000, 'obj_mass': 0.1, 'miu_coef': [0.6, 0.02], 'debug_render': False, 'debug_viewer': False, 'debug_dir': 'output/debug_lz_gripper/debug', 'valid_result_dir': '../bimanual_grasping/BODex/src/curobo/content/assets/output/sim_lz_gripper/tabletop/valid_result', 'simulation_metrics': {'max_pene': 0.01, 'trans_thre': 0.05, 'angle_thre': 15}, 'analytic_fc_metrics': {'contact_tip_only': True, 'contact_threshold': 0.005, 'type': ['qp', 'qp_dfc', 'q1', 'tdg', 'dfc']}, 'pene_contact_metrics': {'contact_margin': 0.01, 'contact_threshold': 0.002}}, 'hand': {'xml_path': 'assets/hand/lz_gripper/lz_gripper_floating_wrist.xml', 'mocap': True, 'exclude_table_contact': None, 'color': [0.898039, 0.921569, 0.929412, 1.0], 'finger_prefix': ['thumb', 'index', 'middle', 'ring', 'little'], 'valid_body_name': ['base_link', 'thumb_link1', 'thumb_link2', 'thumb_link3', 'thumb_tip', 'index_link1', 'index_link2', 'index_tip', 'middle_link1', 'middle_link2', 'middle_tip', 'ring_link1', 'ring_link2', 'ring_tip', 'little_link1', 'little_link2', 'little_tip'], 'tip_body_name': ['thumb_tip', 'index_tip', 'middle_tip', 'ring_tip', 'little_tip']}}
+    configs = OmegaConf.create(dic)
+
+    task_eval(configs)

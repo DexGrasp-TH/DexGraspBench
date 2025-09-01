@@ -49,11 +49,12 @@ def BODex(params):
             [robot_pose[:, :, :7], robot_pose[:, :, 12:], robot_pose[:, :, 7:12]],
             axis=-1,
         )
+        # FIXME: this misalignment between XML and URDF is solved, the following correction is not needed
         # Add a translation bias of palm which is included in XML but ignored in URDF
-        tmp_rot = torch_quaternion_to_matrix(torch.tensor(robot_pose[:, :, 3:7]))
-        robot_pose[:, :, :3] -= (
-            (tmp_rot @ torch.tensor([0, 0, 0.034]).view(1, 1, 3, 1)).squeeze(-1).numpy()
-        )
+        # tmp_rot = torch_quaternion_to_matrix(torch.tensor(robot_pose[:, :, 3:7]))
+        # robot_pose[:, :, :3] -= (
+        #     (tmp_rot @ torch.tensor([0, 0, 0.034]).view(1, 1, 3, 1)).squeeze(-1).numpy()
+        # )
     elif configs.hand_name == "allegro":
         # Add a rotation bias of palm which is included in XML but ignored in URDF
         tmp_rot = torch_quaternion_to_matrix(torch.tensor(robot_pose[:, :, 3:7]))
@@ -136,7 +137,11 @@ def Batched(params):
     for i in range(raw_data["grasp_qpos"].shape[0]):
         save_path = os.path.join(save_path.split(".npy")[0], f"{i}.npy")
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        new_data["obj_scale"] = obj_scale_in_scene * raw_data["scene_scale"][i]
+        # Batched Learning dataset
+        if "scene_scale" not in raw_data:
+            new_data["obj_scale"] = obj_scale_in_scene
+        else:
+            new_data["obj_scale"] = obj_scale_in_scene * raw_data["scene_scale"][i]
         new_data["grasp_qpos"] = raw_data["grasp_qpos"][i]
         new_data["pregrasp_qpos"] = raw_data["pregrasp_qpos"][i]
         new_data["squeeze_qpos"] = raw_data["squeeze_qpos"][i]
