@@ -118,6 +118,7 @@ def Learning(params):
     new_data["grasp_qpos"] = raw_data["grasp_qpos"]
     new_data["pregrasp_qpos"] = raw_data["pregrasp_qpos"]
     new_data["squeeze_qpos"] = raw_data["squeeze_qpos"]
+    # new_data["final_collision"] = raw_data["coll_loss_all_steps"][-1]
     np.save(save_path, new_data)
     return
 
@@ -172,6 +173,7 @@ def task_format(configs):
     if len(raw_data_path_lst) == 0:
         return
 
+    # eval(configs.task.data_name)((raw_data_path_lst[0], configs))
     iterable_params = zip(raw_data_path_lst, [configs] * len(raw_data_path_lst))
     with multiprocessing.Pool(processes=configs.n_worker) as pool:
         result_iter = pool.imap_unordered(eval(configs.task.data_name), iterable_params)

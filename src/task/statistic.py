@@ -195,6 +195,16 @@ def task_stat(configs):
     logging.info(
         f"Find {len(grasp_lst)} grasp data in {configs.grasp_dir}, {len(eval_lst)} evaluated, and {len(succ_lst)} succeeded in {configs.save_dir}"
     )
+    
+    # # object level success rate
+    # num_objects = len(os.listdir(configs.grasp_dir))
+    # logging.info(f"Num objects: {num_objects}")
+    # for object_code in os.listdir(configs.grasp_dir):
+    #     if object_code not in os.listdir(configs.eval_dir):
+    #         continue
+    #     obj_eval_lst = glob(os.path.join(configs.eval_dir, object_code, "**/*.npy"), recursive=True)
+    #     obj_succ_lst = glob(os.path.join(configs.succ_dir, object_code, "**/*.npy"), recursive=True)
+    #     logging.info(f"Object {object_code} success rate: {len(obj_succ_lst)}/{len(obj_eval_lst)}")
 
     # Grasp success rate
     logging.info(f"Grasp success rate: {len(succ_lst)/len(eval_lst)}")
@@ -218,11 +228,12 @@ def task_stat(configs):
             )
         ]
     )
-    logging.info(f"Object success rate: {len(obj_succ_lst)/len(obj_eval_lst)}")
+    logging.info(f"Object success rate: {len(obj_succ_lst)}/{len(obj_eval_lst)}={len(obj_succ_lst)/len(obj_eval_lst)}")
 
     if len(eval_lst) == 0:
         logging.error("No evaluated grasp!")
 
+    # read_data(eval_lst[0])
     with multiprocessing.Pool(processes=configs.n_worker) as pool:
         result_iter = pool.imap_unordered(read_data, eval_lst)
         data_lst = list(result_iter)
