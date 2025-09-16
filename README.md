@@ -84,6 +84,12 @@ To visualize the synthesized grasps of [Dexonomy](https://github.com/JYChen18/De
 bash script/vis_Dexonomy.sh
 ```
 
+## Other Running Commands (jyp)
+```bash
+# convert any dir containing single grasp .npy into collected .npy
+python src/main.py hand=leap task=collect_with_succ exp_name=valid collect_dir=output/valid_leap/all_collect
+```
+
 ## Changelog
 The `main` branch serves as our standard benchmark, with some adjustments to the settings compared to the [BODex](https://arxiv.org/abs/2412.16490) paper, aimed at improving the practicality. Key changes include increasing the object mass from 30g to 100g, raising the hand's kp from 1 to 5, and supporting more diverse object assets. One can further reduce friction coefficients `miu_coef` (currently 0.6 for tangential and 0.02 for torsional) to increase difficulty.
 

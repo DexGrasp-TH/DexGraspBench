@@ -38,6 +38,8 @@ def task_collect(configs):
     qpos_dim = None
     if configs.hand_name == "shadow":
         qpos_dim = 7 + 22
+    elif configs.hand_name == "leap":
+        qpos_dim = 7 + 16
 
     if qpos_dim is not None:
         invalid_path_idx = []
@@ -48,10 +50,10 @@ def task_collect(configs):
                     data['squeeze_qpos'].shape[0] != qpos_dim:
                 invalid_path_idx.append(i)
 
-        invalid_path_lst = [succ_path_lst[i] for i in invalid_path_idx]
-        invalid_folder_lst = list(set([os.path.dirname(p) for p in invalid_path_lst]))
+    invalid_path_lst = [succ_path_lst[i] for i in invalid_path_idx]
+    invalid_folder_lst = list(set([os.path.dirname(p) for p in invalid_path_lst]))
 
-        succ_folder_lst = list(set(succ_folder_lst) - set(invalid_folder_lst))
+    succ_folder_lst = list(set(succ_folder_lst) - set(invalid_folder_lst))
 
     logging.info(
         f"Get {len(succ_path_lst)} success data and {len(succ_folder_lst)} folder."
