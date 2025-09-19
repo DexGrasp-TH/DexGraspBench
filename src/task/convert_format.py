@@ -50,11 +50,14 @@ def BODex(params):
             axis=-1,
         )
         # FIXME: this misalignment between XML and URDF is solved, the following correction is not needed
+        # Please use the modified XML in assets/hand/shadow/right_hand.xml
+        # ------------------------------------------------
         # Add a translation bias of palm which is included in XML but ignored in URDF
         # tmp_rot = torch_quaternion_to_matrix(torch.tensor(robot_pose[:, :, 3:7]))
         # robot_pose[:, :, :3] -= (
         #     (tmp_rot @ torch.tensor([0, 0, 0.034]).view(1, 1, 3, 1)).squeeze(-1).numpy()
         # )
+        # ------------------------------------------------
     elif configs.hand_name == "allegro":
         # Add a rotation bias of palm which is included in XML but ignored in URDF
         tmp_rot = torch_quaternion_to_matrix(torch.tensor(robot_pose[:, :, 3:7]))
@@ -68,12 +71,16 @@ def BODex(params):
             axis=-1,
         )
     elif configs.hand_name == "leap":
+        # FIXME: this misalignment between XML and URDF is solved, the following correction is not needed
+        # Please use the modified XML in assets/hand/leap/right_hand.xml instead of the Mujoco menageries version
+        # ------------------------------------------------
         # Add a translation and rotation bias of palm which is included in XML but ignored in URDF
-        tmp_rot = torch_quaternion_to_matrix(torch.tensor(robot_pose[:, :, 3:7]))
-        delta_rot = torch_quaternion_to_matrix(torch.tensor([0, 1, 0, 0]).view(1, 1, 4))
-        tmp_rot = tmp_rot @ delta_rot.transpose(-1, -2)
-        robot_pose[:, :, 3:7] = torch_matrix_to_quaternion(tmp_rot)
-        robot_pose[:, :, :3] -= (tmp_rot @ torch.tensor([0, 0, 0.1])).numpy()
+        # tmp_rot = torch_quaternion_to_matrix(torch.tensor(robot_pose[:, :, 3:7]))
+        # delta_rot = torch_quaternion_to_matrix(torch.tensor([0, 1, 0, 0]).view(1, 1, 4))
+        # tmp_rot = tmp_rot @ delta_rot.transpose(-1, -2)
+        # robot_pose[:, :, 3:7] = torch_matrix_to_quaternion(tmp_rot)
+        # robot_pose[:, :, :3] -= (tmp_rot @ torch.tensor([0, 0, 0.1])).numpy()
+        # ------------------------------------------------
         pass
     elif configs.hand_name == "lz_gripper":
         # Do nothing
